@@ -67,3 +67,40 @@ def average_vectors(vectors: List[Union[List[float], dict]]):
 
     else:
         raise TypeError(f"Unsupported vector type. {vectors}")
+
+def cosine_similarity(vec1, vec2):
+    if type(vec1) is not type(vec2):
+        raise ValueError("Both vectors must be the same type.")
+
+    # Case 1: List vectors (e.g., tf_idf)
+    if isinstance(vec1, list):
+        if len(vec1) != len(vec2):
+            raise ValueError("Both list vectors must have same length.")
+
+        v1 = np.array(vec1, dtype=float)
+        v2 = np.array(vec2, dtype=float)
+
+    # Case 2: Dict vectors (e.g., emotion/empath)
+    elif isinstance(vec1, dict):
+        if set(vec1.keys()) != set(vec2.keys()):
+            raise ValueError("Both dict vectors must have same keys.")
+
+        # Ensure consistent ordering
+        keys = sorted(vec1.keys())
+        v1 = np.array([vec1[k] for k in keys], dtype=float)
+        v2 = np.array([vec2[k] for k in keys], dtype=float)
+    elif isinstance(vec1, np.ndarray):
+        if vec1.shape != vec2.shape:
+            raise ValueError("Both numpy vectors must have the same shape.")
+        v1 = vec1
+        v2 = vec2
+    else:
+        raise TypeError(f"Unsupported vector type. {vec1} {vec2}")
+
+    norm1 = np.linalg.norm(v1)
+    norm2 = np.linalg.norm(v2)
+
+    if norm1 == 0 or norm2 == 0:
+        return 0.0
+
+    return float(np.dot(v1, v2) / (norm1 * norm2))

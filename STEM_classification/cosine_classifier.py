@@ -9,7 +9,7 @@ parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 
-from helper_functions import average_vectors
+from helper_functions import average_vectors, cosine_similarity
 
 class CosineClassifier:
     def __init__(self):
@@ -20,3 +20,7 @@ class CosineClassifier:
                 data = json.loads(line)
                 all_stem_vecs.append(data.get('empath4D'))
         self.average_STEM_vec = average_vectors(all_stem_vecs)
+
+    def is_stem(self, empath4d_vec, threshold=0.75):
+        similarity = cosine_similarity(empath4d_vec, self.average_STEM_vec)
+        return similarity >= threshold
