@@ -21,8 +21,6 @@ CLASSIFIER_VECTOR_MAKER = SBERTVectorMaker()
 CLASSIFIER_MODEL = joblib.load("best_model_GaussianNB.joblib")
 STEM_TOPIC_SET = get_stem_topic_set()
 
-
-
 def process_book(book_json_object):
     isbn = book_json_object.get("ISBN")
     description = book_json_object.get("description")
