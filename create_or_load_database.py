@@ -5,6 +5,7 @@ import numpy as np
 from vectorizers.Empath4D import Empath4DVectorMaker
 from vectorizers.NRC_EIL import NRC_EIL_VectorMaker
 from vectorizers.SentanceBERT import SBERTVectorMaker
+from STEM_classification.cosine_classifier import CosineClassifier
 from helper_functions import combine_using_bilinear_pool
 
 def get_stem_topic_set():
@@ -18,7 +19,8 @@ def get_stem_topic_set():
 TOPIC_VECTOR_MAKER = Empath4DVectorMaker()
 EMOTION_VECTOR_MAKER = NRC_EIL_VectorMaker()
 CLASSIFIER_VECTOR_MAKER = SBERTVectorMaker()
-CLASSIFIER_MODEL = joblib.load("best_model_GaussianNB.joblib")
+CLASSIFIER_MODEL = joblib.load("STEM_classification/best_model_GaussianNB.joblib")
+COSINE_CLASSIFIER = CosineClassifier()
 STEM_TOPIC_SET = get_stem_topic_set()
 
 def process_book(book_json_object):
@@ -49,8 +51,8 @@ def process_book(book_json_object):
         if predicted_label == 1:
             is_STEM = True
         else:
-            pass
-            #try cossine similarity 
+            if COSINE_CLASSIFIER.is_stem(topic_vec):
+                is_STEM = True
 
     book = {
         "isbn" : isbn,
@@ -60,12 +62,11 @@ def process_book(book_json_object):
     }
     return book
 
-
-
-
 def create_dataset(jsonl_list):
+    database = []
     for book in jsonl_list:
-        process_book(book)
+        database.append(process_book(book))
+    return database
 
 
 def read_in_jsonl_to_list(path):
@@ -75,6 +76,5 @@ def read_in_jsonl_to_list(path):
             results.append(json.loads(line))
     return results
 
-
-test_1 = read_in_jsonl_to_list("test_files/sampled_output_2_4.jsonl")
-create_dataset(test_1)
+# test_1 = read_in_jsonl_to_list("test_files/sampled_output_3_4.jsonl")
+# create_dataset(test_1)
