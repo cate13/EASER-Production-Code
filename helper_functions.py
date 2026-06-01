@@ -1,4 +1,5 @@
 import numpy as np
+from typing import List, Union
 
 def combine_using_bilinear_pool(e_vec, t_vec):
     if isinstance(e_vec, dict):
@@ -23,3 +24,46 @@ def combine_using_bilinear_pool(e_vec, t_vec):
         
     return final_vector
 
+def average_vectors(vectors: List[Union[List[float], dict]]):
+    """
+    Averages a list of vectors.
+    
+    Works for:
+        - List[float]  (e.g., tf_idf)
+        - Dict[str, float] (e.g., emotion_intensity, emotion, empath)
+
+    Returns:
+        Averaged vector (same structure as input)
+    """
+
+    if not vectors:
+        raise ValueError("Vector list is empty.")
+    
+    vectors = [v for v in vectors if v is not None]
+
+    first = vectors[0]
+
+    # Case 1: List-based vector (e.g., tf_idf)
+    if isinstance(first, list):
+        return np.mean(np.array(vectors), axis=0).tolist()
+
+    # Case 2: NumPy-based vector
+    elif isinstance(first, np.ndarray):
+        # We average along the rows (axis 0)
+        return np.mean(np.array(vectors), axis=0)
+    
+    # Case 3: Dict-based vector (emotion/empath)
+    elif isinstance(first, dict):
+        keys = first.keys()
+
+        # Safety check
+        if not all(v.keys() == keys for v in vectors):
+            raise ValueError("All dict vectors must have same keys.")
+
+        return {
+            key: sum(v[key] for v in vectors) / len(vectors)
+            for key in keys
+        }
+
+    else:
+        raise TypeError(f"Unsupported vector type. {vectors}")
