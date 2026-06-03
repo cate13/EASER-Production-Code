@@ -2,6 +2,8 @@ import json
 import joblib
 import numpy as np
 from pprint import pprint
+import numpy as np
+from sklearn.neighbors import NearestNeighbors
 
 from vectorizers.Empath4D import Empath4DVectorMaker
 from vectorizers.NRC_EIL import NRC_EIL_VectorMaker
@@ -27,6 +29,7 @@ class Database():
         self.STEM_TOPIC_SET = get_stem_topic_set()
         json_lines = self.read_in_jsonl_to_list(data_file)
         self.database = self.create_dataset(json_lines)
+        self.create_look_up()
 
     def process_book(self, book_json_object):
         isbn = book_json_object.get("ISBN")
@@ -88,6 +91,35 @@ class Database():
             for line in f:
                 results.append(json.loads(line))
         return results
+
+    def create_look_up(self):
+        self.isbn_registry = []
+        self.metadata_registry = []
+        vector_list = []
+        for isbn, info in self.database.items():
+            combined_vec = combine_using_bilinear_pool(info['emotion_vec'], info['topic_vec'])
+            vector_list.append(combined_vec)
+            self.isbn_registry.append(isbn)
+            self.metadata_registry.append({'is_stem': info['is_stem']})
+        
+        X = np.array(vector_list)
+        self.nn_model = NearestNeighbors(n_neighbors=len(self.isbn_registry), metric='cosine')
+        self.nn_model.fit(X)
+
+    def get_recommendation(self, seed_vec):
+        query_vector = seed_vec.reshape(1, -1)
+        distances, indices = self.nn_model.kneighbors(query_vector)
+
+        for rank, (idx, dist) in enumerate(zip(indices[0][1:], distances[0][1:]), start=1):
+            match_isbn = self.isbn_registry[idx]
+            match_meta = self.metadata_registry[idx]
+            
+            # Calculate similarity percentage from cosine distance
+            similarity = (1 - dist) * 100
+            
+            print(f"Rank {rank}: ISBN {match_isbn}")
+            print(f" -> Similarity Score: {similarity:.2f}%")
+            print(f" -> Is STEM Book: {match_meta['is_stem']}\n")
 
     def get_topic_vec_for_book(self, isbn):
         return self.database[isbn]['topic_vec']
