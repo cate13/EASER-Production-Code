@@ -29,6 +29,8 @@ STEM_TOPIC_SET = get_stem_topic_set()
 def process_book(book_json_object):
         isbn = book_json_object.get("ISBN")
         description = book_json_object.get("description")
+        title = book_json_object.get("Book-Title", "")
+        author = book_json_object.get("Book-Author", "")
 
         topic_vec = TOPIC_VECTOR_MAKER.getEmapthVector(description)
         emotion_vec = EMOTION_VECTOR_MAKER.getEmotionVector(description)
@@ -59,6 +61,7 @@ def process_book(book_json_object):
 
         book = {
             "isbn" : isbn,
+            "title_and_author": f"{title} by {author}",
             "topic_vec" : topic_vec,
             "emotion_vec" : emotion_vec,
             "is_stem" : is_STEM
@@ -87,24 +90,25 @@ class Database():
             item['isbn']: {
                 'topic_vec': item['topic_vec'],
                 'emotion_vec': item['emotion_vec'],
-                'is_stem': item['is_stem']
+                'is_stem': item['is_stem'],
+                'title_and_author': item['title_and_author'],
             } 
             for item in database
         }
         return database_map
 
     def create_look_up(self):
-        self.isbn_registry = []
+        self.book_output = []
         self.metadata_registry = []
         vector_list = []
         for isbn, info in self.database.items():
             combined_vec = combine_using_bilinear_pool(info['emotion_vec'], info['topic_vec'])
             vector_list.append(combined_vec)
-            self.isbn_registry.append(isbn)
+            self.book_output.append(info['title_and_author'])
             self.metadata_registry.append({'is_stem': info['is_stem']})
         
         X = np.array(vector_list)
-        self.nn_model = NearestNeighbors(n_neighbors=len(self.isbn_registry), metric='cosine')
+        self.nn_model = NearestNeighbors(n_neighbors=len(self.book_output), metric='cosine')
         self.nn_model.fit(X)
 
     def get_recommendation(self, user):
@@ -112,13 +116,13 @@ class Database():
         distances, indices = self.nn_model.kneighbors(query_vector)
 
         for rank, (idx, dist) in enumerate(zip(indices[0][1:], distances[0][1:]), start=1):
-            match_isbn = self.isbn_registry[idx]
+            match_book = self.book_output[idx]
             match_meta = self.metadata_registry[idx]
             
             # Calculate similarity percentage from cosine distance
             similarity = (1 - dist) * 100
             
-            print(f"Rank {rank}: ISBN {match_isbn}")
+            print(f"Rank {rank}: {match_book}")
             print(f" -> Similarity Score: {similarity:.2f}%")
             print(f" -> Is STEM Book: {match_meta['is_stem']}\n")
 
@@ -139,6 +143,7 @@ class Database():
             "emotion_vec": transformed_book_json["emotion_vec"],
             "is_stem": transformed_book_json["is_stem"]
         }
+        self.create_look_up() # need to redo look up
         # this currently doesn't add anything to long term storage
         # so only there while program runs 
 
